@@ -62,30 +62,47 @@ function parseNum(raw) {
 
 function fmt(value, maxDigits = 4) {
   if (!Number.isFinite(value)) return '—';
-// Sửa tại dòng 65 - 74:
+  if (value === 0) return '0';
+  const abs = Math.abs(value);
+  if (abs >= 1e9 || abs < 1e-6) {
+    const [mantissa, exponent] = value.toExponential(3).split('e');
+    return `${mantissa.replace('.', ',')} × 10<sup>${Number(exponent)}</sup>`;
+  }
+  return value.toLocaleString('vi-VN', { maximumFractionDigits: maxDigits });
+}
+
+/* Navigation */
+
+function getSavedView() {
+  try {
+    return sessionStorage.getItem('tlh_view');
+  } catch (e) {
+    return null;
+  }
+}
+
 function setView(view) {
   const validViews = ['knowledge', 'mol', 'convert'];
   const target = validViews.includes(view) ? view : 'knowledge';
   state.view = target;
+
+  try {
+    sessionStorage.setItem('tlh_view', target);
+  } catch (e) {}
+
   if (window.location.hash !== `#${target}`) {
-    history.replaceState(null, '', `#${target}`);
+    try {
+      history.replaceState(null, '', `#${target}`);
+    } catch (e) {
+      window.location.hash = target;
+    }
   }
+
   document.querySelectorAll('.nav-btn').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.view === target);
   });
   if (target === 'knowledge') renderKnowledge();
   else if (target === 'mol') renderMol();
-  else renderConvert();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function setView(view) {
-  state.view = view;
-  document.querySelectorAll('.nav-btn').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.view === view);
-  });
-  if (view === 'knowledge') renderKnowledge();
-  else if (view === 'mol') renderMol();
   else renderConvert();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -587,11 +604,9 @@ function tableHTML(cat) {
 /* Init */
 
 document.getElementById('brandBtn').addEventListener('click', () => setView('knowledge'));
-// Sửa tại 6 dòng cuối cùng của app.js:
-document.getElementById('brandBtn').addEventListener('click', () => setView('knowledge'));
 document.querySelectorAll('.nav-btn').forEach((btn) => {
   btn.addEventListener('click', () => setView(btn.dataset.view));
 });
 window.addEventListener('hashchange', () => setView(window.location.hash.slice(1)));
 
-setView(window.location.hash.slice(1) || 'knowledge');}
+setView(window.location.hash.slice(1) || getSavedView() || 'knowledge');
